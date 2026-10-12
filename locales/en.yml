@@ -828,11 +828,21 @@ chat:
 
 # ─── Provider sub-components (OAuth / API Key / custom) ───
 provider:
-  section:
-    viaApiKey: "Via API Key"
-    # $1 = number of hidden providers
-    showMore: "Show more ($1)"
-    showLess: "Show less"
+
+  management:
+    addProvider: "Add provider"
+    addDescription: "Choose a built-in provider or add a custom provider."
+    configureDescription: "Enter this provider's credentials and settings."
+    editTitle: "Edit provider"
+    editDescription: "Update this provider's credentials and settings."
+    search: "Search providers…"
+    noMatch: "No matching providers"
+    back: "Back to providers"
+    providerRemoved: "This provider is no longer available."
+  type:
+    apiKey: "API Key"
+    oauth: "OAuth"
+    custom: "OpenAI-compatible"
   status:
     connected: "Connected"
     notConfigured: "Not configured"
@@ -853,6 +863,7 @@ provider:
       githubCopilot: "Use your Copilot subscription to access GPT/Claude"
       openaiCodex: "Use your ChatGPT Plus/Pro subscription"
   apiKey:
+    label: "API Key"
     placeholder: "Enter API Key"
     disconnect: "Disconnect"
     noModels: "No available models"

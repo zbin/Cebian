@@ -18,6 +18,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 变更 / Changed
+
+- 设置 → AI 提供商改为一张按名称排序的统一列表，只显示已配置的内置（API Key / OAuth）提供商和自定义提供商；添加与编辑共用同一个对话框，未配置的提供商从「添加提供商」目录中选择并按类型配置、登录。
+
+- Settings → AI providers is now a single name-sorted list showing only configured built-in (API Key / OAuth) providers and custom providers; adding and editing share one dialog, and unconfigured providers are picked from the "Add provider" catalog and set up or signed in by type.
+
 ## 1.8.1 - 2026-10-10
 
 ### 新增 / Added

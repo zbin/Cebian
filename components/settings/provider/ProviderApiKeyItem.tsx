@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useId, useState, useMemo, useEffect } from 'react';
 import { toast } from "sonner";
 import { Unplug, Save } from "lucide-react";
 import { complete } from "@earendil-works/pi-ai/compat";
@@ -8,6 +8,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { isCustomProvider } from "@/lib/providers/custom-models";
 import { t } from "@/lib/i18n";
 import type { ApiKeyCredential } from "@/lib/persistence/storage";
@@ -29,7 +30,8 @@ export function ProviderApiKeyItem({
   onSave,
   onRemove,
 }: ProviderApiKeyItemProps) {
-  const [key, setKey] = useState(credential?.apiKey ?? "");
+  const apiKeyFieldId = useId();
+  const [key, setKey] = useState(credential?.apiKey ?? '');
   const [saving, setSaving] = useState(false);
 
   // 凭据由 storage 异步加载，首次挂载时 credential 往往还是 undefined（useStorageItem
@@ -158,48 +160,51 @@ export function ProviderApiKeyItem({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <p className="text-sm font-medium">{label}</p>
         {statusBadge()}
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
+      <FieldGroup className="gap-2">
+        <Field>
+          <FieldLabel htmlFor={apiKeyFieldId}>{t('provider.apiKey.label')}</FieldLabel>
           <PasswordInput
+            id={apiKeyFieldId}
             value={key}
-            onChange={(e) => setKey(e.target.value)}
+            disabled={saving}
+            onChange={(event) => setKey(event.target.value)}
             placeholder={t('provider.apiKey.placeholder')}
           />
-        </div>
+        </Field>
+      </FieldGroup>
 
+      <div className="flex items-center justify-end gap-2">
         <Button
-          size="icon"
-          variant="ghost"
+          type="button"
+          size="sm"
           disabled={saving || !key.trim()}
           onClick={handleSave}
-          title={t('common.save')}
         >
-          {saving ? (
-            <Spinner className="size-3.5" />
-          ) : (
-            <Save className="size-3.5" />
-          )}
+          {saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+          {t('common.save')}
         </Button>
-
-        <Button
-          size="icon"
-          variant="ghost"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          disabled={saving || !credential}
-          onClick={() => {
-            onRemove?.();
-            setKey("");
-          }}
-          title={t('provider.apiKey.disconnect')}
-        >
-          <Unplug className="size-3.5" />
-        </Button>
+        {onRemove && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={saving || !credential}
+            onClick={() => {
+              onRemove();
+              setKey('');
+            }}
+          >
+            <Unplug data-icon="inline-start" />
+            {t('provider.apiKey.disconnect')}
+          </Button>
+        )}
       </div>
     </div>
   );

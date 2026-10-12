@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Label } from '@/components/ui/label';
+import { DialogFooter } from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from '@/components/ui/accordion';
 import type { CustomProviderConfig, CustomModelDef } from '@/lib/persistence/storage';
@@ -42,6 +42,7 @@ function ProviderFormBody({
   onModelFieldChange,
   onSubmit,
   onCancel,
+  onRemove,
   submitLabel,
   submitDisabled,
 }: {
@@ -57,103 +58,117 @@ function ProviderFormBody({
   onModelFieldChange: (modelId: string, patch: ModelFieldPatch) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  onRemove?: () => void;
   submitLabel: string;
   submitDisabled: boolean;
 }) {
-  // 同时填了 API Key 与鉴权类 header（authorization / cf-aig-authorization）时提示：
-  // pi-ai 会优先用 API Key（getClientApiKey），此时 header 不生效
+  const nameId = useId();
+  const baseUrlId = useId();
+  const apiKeyId = useId();
   const authConflict = fields.apiKey.trim() !== '' &&
-    fields.headers.some(h => {
-      const k = h.key.trim().toLowerCase();
-      return k === 'authorization' || k === 'cf-aig-authorization';
+    fields.headers.some((header) => {
+      const key = header.key.trim().toLowerCase();
+      return key === 'authorization' || key === 'cf-aig-authorization';
     });
+
   return (
-    <div className="space-y-3 border border-border rounded-lg p-3">
-      <div className="space-y-2">
-        <Label className="text-xs">{t('provider.form.name')}</Label>
-        <Input
-          value={fields.name}
-          onChange={e => onFieldChange({ name: e.target.value })}
-          placeholder={t('provider.form.namePlaceholder')}
-          className="h-8 text-sm"
+    <>
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+        <FieldGroup className="gap-3">
+          <Field>
+            <FieldLabel htmlFor={nameId}>{t('provider.form.name')}</FieldLabel>
+            <Input
+              id={nameId}
+              value={fields.name}
+              onChange={(event) => onFieldChange({ name: event.target.value })}
+              placeholder={t('provider.form.namePlaceholder')}
+              className="h-8 text-sm"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={baseUrlId}>{t('provider.form.baseUrl')}</FieldLabel>
+            <Input
+              id={baseUrlId}
+              value={fields.baseUrl}
+              onChange={(event) => onFieldChange({ baseUrl: event.target.value })}
+              placeholder={t('provider.form.baseUrlPlaceholder')}
+              className="h-8 text-sm"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={apiKeyId}>{t('provider.form.apiKeyOptional')}</FieldLabel>
+            <PasswordInput
+              id={apiKeyId}
+              value={fields.apiKey}
+              onChange={(event) => onFieldChange({ apiKey: event.target.value })}
+              placeholder={t('provider.form.apiKeyPlaceholder')}
+              className="h-8 text-sm"
+            />
+          </Field>
+        </FieldGroup>
+
+        <Separator />
+
+        <ModelList
+          models={fields.models}
+          canFetch={fields.baseUrl.trim() !== ''}
+          fetching={fields.fetching}
+          fetchError={fields.fetchError}
+          pickerRemoteIds={fields.pickerRemoteIds}
+          manualModelId={fields.manualModelId}
+          onManualModelIdChange={(value) => onFieldChange({ manualModelId: value })}
+          onFetchModels={onFetchModels}
+          onConfirmPicked={onConfirmPicked}
+          onCancelPick={onCancelPick}
+          onAddManualModel={onAddManualModel}
+          onRemoveModels={onRemoveModels}
+          onToggleReasoning={onToggleReasoning}
+          onToggleImage={onToggleImage}
+          onModelFieldChange={onModelFieldChange}
         />
+
+        <Separator />
+
+        <Accordion type="single" collapsible>
+          <AccordionItem value="advanced" className="border-0">
+            <AccordionTrigger className="py-1 text-xs font-medium hover:no-underline">
+              {t('provider.form.advanced')}
+            </AccordionTrigger>
+            <AccordionContent className="pb-1">
+              <FieldSet className="gap-2">
+                <FieldLegend variant="label">{t('provider.form.headers')}</FieldLegend>
+                <HeadersEditor
+                  rows={fields.headers}
+                  onChange={(headers) => onFieldChange({ headers })}
+                />
+                {authConflict && (
+                  <FieldDescription className="text-amber-500">
+                    {t('provider.form.authOverrideHint')}
+                  </FieldDescription>
+                )}
+              </FieldSet>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-xs">{t('provider.form.baseUrl')}</Label>
-        <Input
-          value={fields.baseUrl}
-          onChange={e => onFieldChange({ baseUrl: e.target.value })}
-          placeholder={t('provider.form.baseUrlPlaceholder')}
-          className="h-8 text-sm"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">{t('provider.form.apiKeyOptional')}</Label>
-        <PasswordInput
-          value={fields.apiKey}
-          onChange={e => onFieldChange({ apiKey: e.target.value })}
-          placeholder={t('provider.form.apiKeyPlaceholder')}
-          className="h-8 text-sm"
-        />
-      </div>
-
-      <Separator />
-
-      <ModelList
-        models={fields.models}
-        canFetch={fields.baseUrl.trim() !== ''}
-        fetching={fields.fetching}
-        fetchError={fields.fetchError}
-        pickerRemoteIds={fields.pickerRemoteIds}
-        manualModelId={fields.manualModelId}
-        onManualModelIdChange={v => onFieldChange({ manualModelId: v })}
-        onFetchModels={onFetchModels}
-        onConfirmPicked={onConfirmPicked}
-        onCancelPick={onCancelPick}
-        onAddManualModel={onAddManualModel}
-        onRemoveModels={onRemoveModels}
-        onToggleReasoning={onToggleReasoning}
-        onToggleImage={onToggleImage}
-        onModelFieldChange={onModelFieldChange}
-      />
-
-      <Separator />
-
-      {/* Advanced: custom request headers */}
-      <Accordion type="single" collapsible>
-        <AccordionItem value="advanced" className="border-0">
-          <AccordionTrigger className="py-1 text-xs font-medium hover:no-underline">
-            {t('provider.form.advanced')}
-          </AccordionTrigger>
-          <AccordionContent className="pb-1">
-            <div className="space-y-2">
-              <Label className="text-xs">{t('provider.form.headers')}</Label>
-              <HeadersEditor rows={fields.headers} onChange={(headers) => onFieldChange({ headers })} />
-              {authConflict && (
-                <p className="text-xs text-amber-500">{t('provider.form.authOverrideHint')}</p>
-              )}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Separator />
-
-      <div className="flex items-center gap-2 justify-end">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-        <Button
-          size="sm"
-          onClick={onSubmit}
-          disabled={submitDisabled}
-        >
-          {submitLabel}
-        </Button>
-      </div>
-    </div>
+      <DialogFooter className={onRemove ? 'sm:justify-between' : undefined}>
+        {onRemove && (
+          <Button type="button" variant="destructive" onClick={onRemove}>
+            <Trash2 data-icon="inline-start" />
+            {t('common.delete')}
+          </Button>
+        )}
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={submitDisabled}>
+            {submitLabel}
+          </Button>
+        </div>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -172,10 +187,20 @@ function useProviderForm(initial?: { name: string; baseUrl: string; apiKey: stri
   // 拉取代次：表单被重置 / 重新打开编辑、或端点参数变了，在途的拉取就作废——否则迟到的结果
   // 会在之后的表单里弹出上一个端点的模型勾选框（最长等 10 秒超时）。
   const fetchGenerationRef = useRef(0);
-  const invalidateFetch = () => {
+  const apiKeyEditedRef = useRef(false);
+  const initialApiKey = initial?.apiKey ?? '';
+  useEffect(() => () => {
+    fetchGenerationRef.current++;
+  }, []);
+  const invalidateFetch = useCallback(() => {
     fetchGenerationRef.current += 1;
     setFetching(false);
-  };
+  }, []);
+  useEffect(() => {
+    if (apiKeyEditedRef.current) return;
+    invalidateFetch();
+    setApiKey(initialApiKey);
+  }, [initialApiKey, invalidateFetch]);
 
   const fields: ProviderFormFields = { name, baseUrl, apiKey, models, headers, manualModelId, fetching, fetchError, pickerRemoteIds };
 
@@ -188,6 +213,7 @@ function useProviderForm(initial?: { name: string; baseUrl: string; apiKey: stri
     if (patch.headers !== undefined) setHeaders(patch.headers);
     if (patch.manualModelId !== undefined) setManualModelId(patch.manualModelId);
     if (patch.pickerRemoteIds !== undefined) setPickerRemoteIds(patch.pickerRemoteIds);
+    if (patch.apiKey !== undefined) apiKeyEditedRef.current = true;
   };
 
   const handleFetchModels = async () => {
@@ -241,71 +267,56 @@ function useProviderForm(initial?: { name: string; baseUrl: string; apiKey: stri
     modelId: string,
     patch: ModelFieldPatch,
   ) => setModels(models.map(m => (m.modelId === modelId ? { ...m, ...patch } : m)));
-
-  const reset = () => {
-    setName('');
-    setBaseUrl('');
-    setApiKey('');
-    setModels([]);
-    setHeaders([]);
-    setManualModelId('');
-    setFetchError('');
-    setPickerRemoteIds(null);
-    invalidateFetch();
+  return {
+    fields,
+    onFieldChange,
+    handleFetchModels,
+    handleConfirmPicked,
+    handleCancelPick,
+    handleAddManualModel,
+    handleRemoveModels,
+    handleToggleReasoning,
+    handleToggleImage,
+    handleModelFieldChange,
   };
 
-  return { fields, onFieldChange, handleFetchModels, handleConfirmPicked, handleCancelPick, handleAddManualModel, handleRemoveModels, handleToggleReasoning, handleToggleImage, handleModelFieldChange, reset };
 }
-
-// ─── Create form ───
 
 interface CustomProviderFormProps {
-  onAdd: (config: CustomProviderConfig, apiKey?: string) => void;
+  initial?: { config: CustomProviderConfig; apiKey: string };
+  onSave: (config: CustomProviderConfig, apiKey?: string) => void;
+  onRemove?: () => void;
+  onCancel: () => void;
 }
 
-export function CustomProviderForm({ onAdd }: CustomProviderFormProps) {
-  const [expanded, setExpanded] = useState(false);
-  const form = useProviderForm();
-
-  const handleCancel = () => {
-    form.reset();
-    setExpanded(false);
-  };
+export function CustomProviderForm({ initial, onSave, onRemove, onCancel }: CustomProviderFormProps) {
+  const form = useProviderForm(initial ? {
+    name: initial.config.name,
+    baseUrl: initial.config.baseUrl,
+    apiKey: initial.apiKey,
+    models: initial.config.models,
+    headers: initial.config.headers,
+  } : undefined);
 
   const handleSubmit = () => {
     const { name, baseUrl, apiKey, models, headers } = form.fields;
     if (!name.trim() || !baseUrl.trim() || models.length === 0) return;
 
-    // id 仅作内部存储 key（custom:<id>），不展示，用 uuid 保证唯一，
-    // 避免纯中文等无 ASCII 字符的名称生成空 slug 导致添加静默失败。
-    const id = crypto.randomUUID();
     const headerRecord = headerRowsToRecord(headers);
-
-    onAdd({
-      id,
+    const config: CustomProviderConfig = {
+      id: initial?.config.id ?? crypto.randomUUID(),
       name: name.trim(),
       baseUrl: baseUrl.trim().replace(/\/+$/, ''),
       models,
       ...(headerRecord ? { headers: headerRecord } : {}),
-    }, apiKey.trim() || undefined);
-
-    form.reset();
-    setExpanded(false);
+    };
+    if (initial) {
+      const keyChanged = apiKey.trim() !== initial.apiKey;
+      onSave(config, keyChanged ? apiKey.trim() || undefined : initial.apiKey || undefined);
+    } else {
+      onSave(config, apiKey.trim() || undefined);
+    }
   };
-
-  if (!expanded) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={() => setExpanded(true)}
-      >
-        <Plus className="size-3.5" />
-        {t('provider.form.addCustom')}
-      </Button>
-    );
-  }
 
   return (
     <ProviderFormBody
@@ -320,128 +331,10 @@ export function CustomProviderForm({ onAdd }: CustomProviderFormProps) {
       onToggleImage={form.handleToggleImage}
       onModelFieldChange={form.handleModelFieldChange}
       onSubmit={handleSubmit}
-      onCancel={handleCancel}
-      submitLabel={t('common.add')}
+      onCancel={onCancel}
+      onRemove={onRemove}
+      submitLabel={initial ? t('common.save') : t('common.add')}
       submitDisabled={!form.fields.name.trim() || !form.fields.baseUrl.trim() || form.fields.models.length === 0}
     />
-  );
-}
-
-// ─── Custom provider card (with inline edit) ───
-
-interface CustomProviderCardProps {
-  config: CustomProviderConfig;
-  apiKey: string;
-  onUpdate: (config: CustomProviderConfig, apiKey?: string) => void;
-  onRemove: () => void;
-}
-
-export function CustomProviderCard({ config, apiKey, onUpdate, onRemove }: CustomProviderCardProps) {
-  const [editing, setEditing] = useState(false);
-  const form = useProviderForm({
-    name: config.name,
-    baseUrl: config.baseUrl,
-    apiKey,
-    models: config.models,
-    headers: config.headers,
-  });
-
-  const openEdit = () => {
-    // Re-init form from current props each time edit is opened
-    form.onFieldChange({
-      name: config.name,
-      baseUrl: config.baseUrl,
-      apiKey,
-      models: config.models,
-      headers: recordToHeaderRows(config.headers),
-      manualModelId: '',
-      pickerRemoteIds: null,
-    });
-    setEditing(true);
-  };
-
-  const handleCancel = () => {
-    setEditing(false);
-  };
-
-  const handleSave = () => {
-    const { name: newName, baseUrl, apiKey: newKey, models, headers } = form.fields;
-    if (!newName.trim() || !baseUrl.trim() || models.length === 0) return;
-
-    // Only pass apiKey if it was changed
-    const keyChanged = newKey.trim() !== apiKey;
-
-    onUpdate({
-      ...config,
-      name: newName.trim(),
-      baseUrl: baseUrl.trim().replace(/\/+$/, ''),
-      models,
-      headers: headerRowsToRecord(headers),
-    }, keyChanged ? (newKey.trim() || undefined) : apiKey || undefined);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <ProviderFormBody
-        fields={form.fields}
-        onFieldChange={form.onFieldChange}
-        onFetchModels={form.handleFetchModels}
-        onConfirmPicked={form.handleConfirmPicked}
-        onCancelPick={form.handleCancelPick}
-        onAddManualModel={form.handleAddManualModel}
-        onRemoveModels={form.handleRemoveModels}
-        onToggleReasoning={form.handleToggleReasoning}
-        onToggleImage={form.handleToggleImage}
-        onModelFieldChange={form.handleModelFieldChange}
-        onSubmit={handleSave}
-        onCancel={handleCancel}
-        submitLabel={t('common.save')}
-        submitDisabled={!form.fields.name.trim() || !form.fields.baseUrl.trim() || form.fields.models.length === 0}
-      />
-    );
-  }
-
-  // 自定义 provider 不做连通性测试，只区分「已配置（淡蓝 info）/ 未配置（灰）」。
-  // 用 header 鉴权（apiKey 留空）也算已配置，避免误显「未配置」
-  const configured = !!apiKey || (!!config.headers && Object.keys(config.headers).length > 0);
-  const badgeState = configured
-    ? { label: t('provider.status.configured'), className: 'text-blue-500 border-blue-500/20 bg-blue-500/5' }
-    : { label: t('provider.status.notConfigured'), className: 'text-muted-foreground border-border' };
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-medium">{config.name}</p>
-        <Badge
-          variant="outline"
-          className={`text-[0.65rem] h-4 px-1.5 ${badgeState.className}`}
-        >
-          {badgeState.label}
-        </Badge>
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={openEdit}
-            title={t('common.edit')}
-          >
-            <Pencil className="size-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={onRemove}
-            title={t('common.delete')}
-          >
-            <Trash2 className="size-3" />
-          </Button>
-        </div>
-      </div>
-      <p className="text-[0.6rem] text-muted-foreground font-mono truncate">
-        {config.baseUrl}
-      </p>
-    </div>
   );
 }

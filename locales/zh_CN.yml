@@ -814,11 +814,21 @@ chat:
 
 # ─── 提供商子组件（OAuth / API Key / 自定义）───
 provider:
-  section:
-    viaApiKey: "通过 API Key"
-    # $1 = 被折叠的 provider 数量
-    showMore: "展开更多（$1）"
-    showLess: "收起"
+
+  management:
+    addProvider: "添加提供商"
+    addDescription: "选择一个内置提供商，或添加自定义提供商。"
+    configureDescription: "填写此提供商的凭据和设置。"
+    editTitle: "编辑提供商"
+    editDescription: "更新此提供商的凭据和配置。"
+    search: "搜索提供商…"
+    noMatch: "没有匹配的提供商"
+    back: "返回提供商列表"
+    providerRemoved: "此提供商已不存在。"
+  type:
+    apiKey: "API Key"
+    oauth: "OAuth"
+    custom: "OpenAI 兼容"
   status:
     connected: "已连接"
     notConfigured: "未配置"
@@ -839,6 +849,7 @@ provider:
       githubCopilot: "使用 Copilot 订阅访问 GPT/Claude"
       openaiCodex: "使用 ChatGPT Plus/Pro 订阅"
   apiKey:
+    label: "API Key"
     placeholder: "输入 API Key"
     disconnect: "断开连接"
     noModels: "无可用模型"
