@@ -23,7 +23,7 @@ Cebian 的会话树存储（`lib/persistence/session-tree.ts`）和压缩摘要�
 
 ## 维护约定
 
-- 这里只放上游代码，不混 Cebian 业务逻辑；需要扩展时在调用方做（例如 `lib/agent/compaction-summary.ts` 对 `CompactionSummaryMessage` 的声明增广）。
+- 这里只放上游代码及为 pi 1.0 注册自定义消息所需的本地类型；需要业务字段时在 shim 类型中统一声明，避免重复增广带来的重复接口声明冲突。
 - 行为由 `session/testing/conformance.ts` 钉住（经 `lib/persistence/session-tree.test.ts` 运行）。改动本目录必须保持该套件全绿。
 - 上游已删除这些文件，升级 pi 时不必再 diff 它们；但要确认这里依赖的 pi 公开 API 没变：pi-ai 的 `uuidv7`、`Models.completeSimple`、`retryAssistantCall`、`contentText` 以及消息 / 模型 / 用量 / 重试相关类型，pi-agent-core 的 `AgentMessage` / `ThinkingLevel` / `CustomAgentMessages`。
 - 与上游的任何偏离都记在下面。

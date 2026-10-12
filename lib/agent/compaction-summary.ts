@@ -20,25 +20,13 @@ import type { CompactionSummaryMessage } from '@/lib/shims/pi-harness/messages';
  * 这是对的，retry 丢弃的是整轮，而摘要摘的正是这一轮的内容。
  *
  * 消息类型直接复用 pi harness 的 `CompactionSummaryMessage`（vendor 于 lib/shims/pi-harness，
- * 由其 messages.ts 注册进 `AgentMessage` union），在此对其做 declaration merging 增广两个字段：
+ * 由其 messages.ts 注册进 `AgentMessage` union）；扩展字段在该 shim 的类型中声明：
  * - `retainedTail`：压缩时保留区的消息副本（对齐 pi CompactionEntry 的同名字段）。
  *   树化后摘要在会话里是**尾部追加**（不再中段插入），保留区原文位于摘要之前，
  *   LLM 视图由 transformContext 用本字段重建为「摘要 + 保留区 + 其后消息」。
  *   v1 迁移来的旧摘要没有此字段（保留区本就排在摘要之后），两种形态由同一条
  *   transformContext 公式统一处理。UI 渲染忽略此字段。
  */
-declare module '@/lib/shims/pi-harness/messages' {
-  interface CompactionSummaryMessage {
-    // 语义是 AgentMessage[]，但必须声明为 unknown[]：AgentMessage union 包含本
-    // 接口自身，真递归类型会让 Dexie 的 UpdateSpec/KeyPaths 映射类型无限展开
-    // （TS2615）。读取统一走下面的 getRetainedTail 拿回具体类型。
-    retainedTail?: unknown[];
-    // 本条不是摘要，而是「早期历史被直接丢弃」的标记：摘要生成失败、而上下文又已
-    // 超窗时的兜底（见 createDroppedHistoryMessage）。复用同一消息类型而不是新增一种，
-    // 是为了让折叠公式、树持久化、投影、迁移、UI 分隔条这一整条链路原样复用。
-    dropped?: true;
-  }
-}
 
 /** 取回 retainedTail 的具体类型（声明层为 unknown[]，见上方注释）；缺失返回 []。 */
 function getRetainedTail(msg: CompactionSummaryMessage): AgentMessage[] {

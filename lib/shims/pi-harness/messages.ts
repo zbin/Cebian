@@ -48,11 +48,15 @@ export interface BranchSummaryMessage {
   timestamp: number;
 }
 
+
 export interface CompactionSummaryMessage {
   role: 'compactionSummary';
   summary: string;
   tokensBefore: number;
   timestamp: number;
+  // `unknown[]` avoids recursive AgentMessage expansion in Dexie's mapped key types.
+  retainedTail?: unknown[];
+  dropped?: true;
 }
 
 declare module '@earendil-works/pi-agent-core' {
