@@ -119,6 +119,12 @@ export default defineConfig({
         },
   }),
   vite: () => ({
+    build: {
+      // 扩展资源都在本地磁盘，modulepreload 几乎没有收益；而 Chrome 会对扩展页里的
+      // <link rel="modulepreload"> 报 “cross-world extension resource mismatch”，
+      // 在扩展管理页的 Errors 里刷出大量告警（Chromium 540906914）。
+      modulePreload: false,
+    },
     plugins: [
       tailwindcss(),
     ],

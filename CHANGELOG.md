@@ -24,6 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Settings → AI providers is now a single name-sorted list showing only configured built-in (API Key / OAuth) providers and custom providers; adding and editing share one dialog, and unconfigured providers are picked from the "Add provider" catalog and set up or signed in by type.
 
+### 修复 / Fixed
+
+- 修复浏览器扩展管理页的「错误」里刷出大量「A preload for … cross-world extension resource mismatch」告警的问题：扩展页面不再生成 `modulepreload` 预加载标签
+
+- Fixed Chrome's extension Errors page filling up with "A preload for … is found, but is not used because it is a cross-world extension resource mismatch" warnings: extension pages no longer emit `modulepreload` links
+
 ## 1.8.1 - 2026-10-10
 
 ### 新增 / Added
