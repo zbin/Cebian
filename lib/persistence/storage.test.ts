@@ -9,7 +9,25 @@ import {
   resolveAutoTitleSettings,
   resolveOrganizeSettings,
   resolvePageInteractionSettings,
+  localePreference,
+  resolveLocalePreference,
 } from '@/lib/persistence/storage';
+describe('resolveLocalePreference', () => {
+  it('仅接受已支持 locale，其余回落到 system', () => {
+    expect(resolveLocalePreference('system')).toBe('system');
+    expect(resolveLocalePreference('en')).toBe('en');
+    expect(resolveLocalePreference('zh_CN')).toBe('zh_CN');
+    expect(resolveLocalePreference('zh_TW')).toBe('zh_TW');
+    expect(resolveLocalePreference('fr')).toBe('system');
+    expect(resolveLocalePreference(null)).toBe('system');
+  });
+
+  it('storage fallback 为 system，且读取 fallback 不会写入 key', async () => {
+    fakeBrowser.reset();
+    expect(await localePreference.getValue()).toBe('system');
+    expect(await fakeBrowser.storage.local.get('locale')).toEqual({});
+  });
+});
 
 // organize 配置的回填：早期只存 { enabled }，后续加了 organize 子结构。WXT 的 fallback
 // 只在 key 整体缺失时生效、不补「已存在但缺字段」的旧值，故读整理配置统一走

@@ -16,6 +16,7 @@ import { themePreference } from '@/lib/persistence/storage';
 import { chatAppearanceStyle } from '@/lib/ui/chat-appearance';
 import { sessionListChannel } from '@/lib/agent/session-list-channel';
 import { t } from '@/lib/i18n';
+import { useLocale } from '@/hooks/useLocale';
 import { ChatPage } from './pages/chat';
 import { useSidePanelToggle } from './useSidePanelToggle';
 import { useSidePanelHandoff } from './useSidePanelHandoff';
@@ -40,6 +41,7 @@ function applyTheme(resolved: 'dark' | 'light') {
 
 function App() {
   const [theme, setTheme] = useStorageItem(themePreference, 'system');
+  const locale = useLocale();
   const [themeReady, setThemeReady] = useState(false);
   // 对话区字号 / 字体：与主题一样先读出再渲染，避免首帧按默认字号画完再跳变
   const appearance = useChatAppearance();
@@ -144,7 +146,7 @@ function App() {
     navigate(lastChatPathRef.current, { replace: true });
   }, [navigate]);
 
-  if (!themeReady || !appearance) return null;
+  if (!themeReady || !appearance || locale === null) return null;
 
   return (
     <TooltipProvider delayDuration={300}>

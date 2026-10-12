@@ -312,6 +312,15 @@ export const themePreference = storage.defineItem<ThemePreference>(
   { fallback: 'system' },
 );
 
+export type LocalePreference = 'system' | 'en' | 'zh_CN' | 'zh_TW';
+
+export function resolveLocalePreference(value: unknown): LocalePreference {
+  if (value === 'en' || value === 'zh_CN' || value === 'zh_TW') return value;
+  return 'system';
+}
+
+export const localePreference = storage.defineItem<LocalePreference>('local:locale', { fallback: 'system' });
+
 export const userInstructions = storage.defineItem<string>(
   'local:userInstructions',
   { fallback: '' },

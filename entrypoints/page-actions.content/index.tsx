@@ -3,11 +3,13 @@
 
 import ReactDOM from 'react-dom/client';
 import { PageActionsApp } from './App';
+import { startLocaleSync } from '@/lib/i18n';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_idle',
   async main(ctx) {
+    await startLocaleSync();
     const ui = await createShadowRootUi(ctx, {
       name: 'cebian-page-actions',
       position: 'inline',

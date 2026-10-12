@@ -13,6 +13,7 @@ import type { Api, Model, UserMessage, AssistantMessage } from '@earendil-works/
 import { resolveModel } from '@/lib/providers/resolve-model';
 import { languageName } from '@/lib/utils';
 import { defaultSessionTitle } from '@/lib/agent/session-title';
+import { waitForLocaleSync } from '@/lib/i18n';
 import {
   providerCredentials,
   customProviders,
@@ -93,6 +94,8 @@ export async function runPageActionStream(
   request: PageActionRequest,
   handlers: { onDelta: (delta: string) => void; signal: AbortSignal },
 ): Promise<PageActionOutcome> {
+  // 等待用户当前选择的语言目录激活；提示词渲染本身是同步的。
+  await waitForLocaleSync();
   const action = await loadAction(request.actionId);
   const settings = resolvePageInteractionSettings(await pageInteractionSettings.getValue());
   // 环境变量一次动作只取一份快照：提示词渲染与后处理脚本共用它，免得两处各算一次
@@ -164,6 +167,8 @@ export async function materializeHandoff(
   },
   windowId: number,
 ): Promise<void> {
+  // 确保写入会话的默认标题使用当前用户选择的语言。
+  await waitForLocaleSync();
   await loadAction(req.actionId);
   const settings = resolvePageInteractionSettings(await pageInteractionSettings.getValue());
 

@@ -15,6 +15,7 @@ import {
   isPageActionRequest,
   CLOSE_SIDEPANEL_KIND,
   PAGE_ACTION_PORT,
+  PAGE_ACTION_KIND,
   type PageActionId,
   type PageActionRequest,
   type PageActionStreamMessage,
@@ -142,9 +143,6 @@ export function setupPageActions(handlers: PageActionHandlers): void {
   if (pageActionsSetup) return;
   pageActionsSetup = true;
   void refreshOpenPanels();
-  browser.runtime.onConnect.addListener((port) => {
-    if (port.name === PAGE_ACTION_PORT) handlePageActionPort(port, handlers.runStream);
-  });
   browser.runtime.onMessage.addListener((msg, sender) => {
     if (!isPageActionMessage(msg)) return;
     switch (msg.type) {
@@ -162,7 +160,6 @@ export function setupPageActions(handlers: PageActionHandlers): void {
       case 'continue_in_sidepanel': {
         const windowId = sender.tab?.windowId;
         if (typeof windowId === 'number' && windowId >= 0) {
-          // 同步开面板保住用户手势；随后异步固化会话 + 写 pending（侧边栏监听到即跳转）。
           openPanelWindows.add(windowId);
           chrome.sidePanel.open({ windowId }).catch((err) => {
             openPanelWindows.delete(windowId);
@@ -183,7 +180,6 @@ export function setupPageActions(handlers: PageActionHandlers): void {
         break;
       }
     }
-    // 不发送异步响应
     return undefined;
   });
 }

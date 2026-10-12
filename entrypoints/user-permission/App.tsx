@@ -8,6 +8,7 @@ import { openPermissionSettings } from '@/lib/ui/user-permission';
 import { REQUESTERS, parsePermissionType } from './requesters';
 import { Panel, type PanelState } from './panels/Panel';
 import { PermissionPanel } from './panels/PermissionPanel';
+import { useLocale } from '@/hooks/useLocale';
 import { PANEL_CONFIGS } from './panels/configs';
 
 // 通用「用户权限」页（独立标签页）。
@@ -49,6 +50,7 @@ async function closeSelfTab(): Promise<void> {
 }
 
 export default function App() {
+  const locale = useLocale();
   const [theme] = useStorageItem(themePreference, 'system');
   useEffect(() => applyTheme(theme), [theme]);
 
@@ -80,6 +82,7 @@ export default function App() {
     }
   }, [type]);
 
+  if (locale === null) return null;
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
       <div className="w-full max-w-sm text-center">

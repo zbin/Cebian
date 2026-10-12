@@ -15,6 +15,7 @@ import {
   pageInteractionSettings,
   resolvePageActionsConfig,
   resolvePageInteractionSettings,
+  type LocalePreference,
 } from '@/lib/persistence/storage';
 import { visibleToolbarActions } from '@/lib/page-actions/actions';
 import type { PageActionId } from '@/lib/page-actions/types';
@@ -297,7 +298,7 @@ function actionIcon(id: string, size: number) {
  * 受 `pageInteractionSettings`（总开关 + 页面生效范围）与 `pageActionsConfig`（动作启停 /
  * 改名 / 页面范围 / 排序）实时控制。点动作后展开内联结果卡（ResultCard）。
  */
-export function SelectionToolbar() {
+export function SelectionToolbar({ locale }: { locale: LocalePreference | null }) {
   const [stored] = useStorageItem(pageInteractionSettings, undefined);
   const [storedActions] = useStorageItem(pageActionsConfig, undefined);
   const settings = resolvePageInteractionSettings(stored);
@@ -309,7 +310,7 @@ export function SelectionToolbar() {
     settings.showSelectionToolbar && matchesPageScope(url, settings.toolbarPages);
   const actions = useMemo(
     () => visibleToolbarActions(resolvePageActionsConfig(storedActions), url),
-    [storedActions, url],
+    [storedActions, url, locale],
   );
   const anchor = useSelectionAnchor(enabled);
   const barRef = useRef<HTMLDivElement>(null);
@@ -320,7 +321,6 @@ export function SelectionToolbar() {
   // text / context / rect 在点击时捕获，卡片独立于后续选区变化。
   const [action, setAction] = useState<{
     id: PageActionId;
-    label: string;
     text: string;
     /** 点击那刻的页面侧模板变量（context / page_url / page_title）。 */
     vars: Record<string, string>;
@@ -415,10 +415,10 @@ export function SelectionToolbar() {
   }, [anchor]);
 
   const startAction = useCallback(
-    (id: PageActionId, label: string) => {
+    (id: PageActionId) => {
       if (!anchor) return;
       // 点击时选区仍在（onMouseDown preventDefault），此刻采集页面侧变量。
-      setAction({ id, label, text: anchor.text, vars: gatherPageVars(), rect: anchor.rect });
+      setAction({ id, text: anchor.text, vars: gatherPageVars(), rect: anchor.rect });
     },
     [anchor],
   );
@@ -429,10 +429,12 @@ export function SelectionToolbar() {
 
   // 结果卡打开时只展示卡片（隐藏工具条）；关闭后若选区仍在则工具条重现。
   if (action) {
+    const selectedAction = actions.find(({ id }) => id === action.id);
+    if (!selectedAction) return null;
     return (
       <ResultCard
         actionId={action.id}
-        title={action.label}
+        title={selectedAction.label}
         text={action.text}
         vars={action.vars}
         anchorRect={action.rect}
@@ -475,7 +477,7 @@ export function SelectionToolbar() {
           key={a.id}
           icon={actionIcon(a.id, iconSize)}
           label={a.label}
-          onClick={() => startAction(a.id, a.label)}
+          onClick={() => startAction(a.id)}
         />
       ))}
     </div>

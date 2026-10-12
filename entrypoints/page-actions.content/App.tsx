@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocale } from '@/hooks/useLocale';
 import { announcePresent, subscribeSuppress } from '@/lib/page-actions/channel';
 import { FloatingBall } from './FloatingBall';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -34,12 +35,13 @@ function useSuppressed(): boolean {
 
 /** 页面注入 UI 根：承载悬浮球与划词工具条，取词 / 录制时整体隐藏。 */
 export function PageActionsApp() {
+  const locale = useLocale();
   const suppressed = useSuppressed();
   if (suppressed) return null;
   return (
     <>
       <FloatingBall />
-      <SelectionToolbar />
+      <SelectionToolbar locale={locale} />
     </>
   );
 }

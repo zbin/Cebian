@@ -22,6 +22,7 @@ import { vfs, normalizePath } from '@/lib/persistence/vfs';
 import { downloadFile } from '@/lib/utils';
 import type { SettingsOutletContext } from '@/components/settings/SettingsLayout';
 import { t } from '@/lib/i18n';
+import { useLocale } from '@/hooks/useLocale';
 
 /**
  * SkillsSection — multi-file agent skill manager under /settings/skills[/*].
@@ -37,6 +38,7 @@ import { t } from '@/lib/i18n';
  * business concepts.
  */
 export function SkillsSection() {
+  const locale = useLocale();
   const { basePath, breakpoint } = useOutletContext<SettingsOutletContext>();
   const params = useParams();
   const navigate = useNavigate();
@@ -184,7 +186,7 @@ export function SkillsSection() {
       label: t('settings.skills.exportAll'),
       onSelect: handleExportAll,
     },
-  ], [handleCreateSkill, handleImportClick, handleExportCurrent, handleExportAll, currentSkillName]);
+  ], [handleCreateSkill, handleImportClick, handleExportCurrent, handleExportAll, currentSkillName, locale]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

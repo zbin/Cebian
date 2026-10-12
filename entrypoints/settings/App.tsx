@@ -6,6 +6,7 @@ import { ConfirmOutlet } from '@/components/dialogs/confirm-outlet';
 import { SettingsRoutes } from '@/entrypoints/sidepanel/pages/settings';
 import { useStorageItem } from '@/hooks/useStorageItem';
 import { themePreference } from '@/lib/persistence/storage';
+import { useLocale } from '@/hooks/useLocale';
 
 function resolveTheme(pref: 'dark' | 'light' | 'system'): 'dark' | 'light' {
   if (pref !== 'system') return pref;
@@ -25,6 +26,7 @@ function applyTheme(resolved: 'dark' | 'light') {
  */
 export default function App() {
   const [theme] = useStorageItem(themePreference, 'system');
+  const locale = useLocale();
   const [themeReady, setThemeReady] = useState(false);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function App() {
     return () => mq.removeEventListener('change', handler);
   }, [theme]);
 
-  if (!themeReady) return null;
+  if (!themeReady || locale === null) return null;
 
   // 设置页里的保存失败等提示走 sonner；独立标签页也要有出口，不然只在侧边栏看得到。
   return (

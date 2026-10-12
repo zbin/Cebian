@@ -13,6 +13,7 @@
 // handler，漏注册则 CI 红。
 
 import { CLIENT_MESSAGE_TYPES, type ClientMessage } from '@/lib/ipc/protocol';
+import { waitForLocaleSync } from '@/lib/i18n';
 import { getPortState, onPortConnect, post, setInstanceId } from './port-registry';
 
 /** 每个消息类型对应的处理函数。映射类型让各域注册时天然拿到窄化后的 msg 形状。 */
@@ -80,6 +81,9 @@ function setupClientRouter(): void {
       const handler = handlers[msg.type];
       if (!handler) return;
       try {
+        // 等待用户当前选择的语言目录激活；等待期间端口可能断开。
+        await waitForLocaleSync();
+        if (!getPortState(port)) return;
         // 查表取出后 TS 无法再把 handler 的参数类型与 msg 的判别关联起来
         // （相关性在索引访问处丢失），此处收窄成一个局部 cast。
         await (handler as (p: chrome.runtime.Port, m: ClientMessage) => void | Promise<void>)(

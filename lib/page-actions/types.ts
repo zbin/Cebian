@@ -54,15 +54,9 @@ export function isPageActionMessage(m: unknown): m is PageActionMessage {
   const r = m as Record<string, unknown>;
   if (r.kind !== PAGE_ACTION_KIND) return false;
   if (r.type === 'toggle_sidepanel' || r.type === 'present') return true;
-  if (r.type === 'sidepanel_present' || r.type === 'sidepanel_gone') {
-    return typeof r.windowId === 'number';
-  }
+  if (r.type === 'sidepanel_present' || r.type === 'sidepanel_gone') return typeof r.windowId === 'number';
   if (r.type === 'continue_in_sidepanel') {
-    return (
-      isPageActionId(r.actionId) &&
-      typeof r.text === 'string' &&
-      typeof r.result === 'string'
-    );
+    return isPageActionId(r.actionId) && typeof r.text === 'string' && typeof r.result === 'string';
   }
   return false;
 }

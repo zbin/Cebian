@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Info, TriangleAlert } from 'lucide-react';
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup } from '@/components/ui/radio-group';
 import { BackupRadioOption } from '@/components/settings/backup/BackupRadioOption';
 import { cn } from '@/lib/utils';
+import { useLocale } from '@/hooks/useLocale';
 import { t } from '@/lib/i18n';
 import type { BackupCategory, BackupOptions } from '@/lib/backup/types';
 
@@ -50,7 +51,9 @@ interface CreateBackupDialogProps {
  * 产出 BackupOptions 交给调用方（本地下载或 WebDAV 上传共用）。
  */
 export function CreateBackupDialog({ open, onOpenChange, onConfirm }: CreateBackupDialogProps) {
+  const locale = useLocale();
   const [name, setName] = useState(defaultBackupName);
+  const defaultName = useRef(name);
   const [description, setDescription] = useState('');
   const [mode, setMode] = useState<Mode>('full');
   const [sessions, setSessions] = useState(true);
@@ -62,10 +65,18 @@ export function CreateBackupDialog({ open, onOpenChange, onConfirm }: CreateBack
   const [encrypt, setEncrypt] = useState(false);
   const [password, setPassword] = useState('');
 
+  useEffect(() => {
+    const previousDefaultName = defaultName.current;
+    const nextDefaultName = defaultBackupName();
+    setName((current) => current === previousDefaultName ? nextDefaultName : current);
+    defaultName.current = nextDefaultName;
+  }, [locale]);
   // 每次打开时重置表单：刷新默认名、清空口令，避免上次的选择 / 明文口令滞留。
   useEffect(() => {
     if (!open) return;
-    setName(defaultBackupName());
+    const nextDefaultName = defaultBackupName();
+    defaultName.current = nextDefaultName;
+    setName(nextDefaultName);
     setDescription('');
     setMode('full');
     setSessions(true);

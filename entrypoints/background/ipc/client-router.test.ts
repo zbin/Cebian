@@ -8,13 +8,34 @@
 // 「index.ts 漏调某个 setup」不归本测试管 —— `setupClientRouter()` 启动时校验实际
 // 注册表覆盖全集，漏接线在 SW 启动期直接 throw。
 
-import { describe, it, expect } from 'vitest';
-import { CLIENT_MESSAGE_TYPES } from '@/lib/ipc/protocol';
+import { describe, it, expect, vi } from 'vitest';
+import { CLIENT_MESSAGE_TYPES, type ClientMessage } from '@/lib/ipc/protocol';
+import type * as I18nModule from '@/lib/i18n';
 import { builtinHandlers, registerClientHandlers, type ClientHandlerMap } from './client-router';
 import { chatClientHandlers } from '../chat/client-handlers';
 import { recorderClientHandlers } from '../recorder/client-handlers';
 import { memoryClientHandlers } from '../memory/client-handlers';
 import { mcpClientHandlers } from '../mcp/bridge';
+
+const portRegistryHarness = vi.hoisted(() => ({
+  connectListener: undefined as ((port: unknown) => void) | undefined,
+  getPortState: vi.fn(),
+  post: vi.fn(),
+  broadcastAll: vi.fn(),
+  setInstanceId: vi.fn(),
+}));
+
+vi.mock('./port-registry', () => ({
+  getPortState: portRegistryHarness.getPortState,
+  onPortConnect: (listener: (port: unknown) => void) => {
+    portRegistryHarness.connectListener = listener;
+    return () => {};
+  },
+  onPortDisconnect: () => () => {},
+  post: portRegistryHarness.post,
+  broadcastAll: portRegistryHarness.broadcastAll,
+  setInstanceId: portRegistryHarness.setInstanceId,
+}));
 
 /** 所有注册进路由器的 handler map（与 index.ts 各 setup() 注册的对象一一对应）。 */
 const DOMAIN_HANDLER_MAPS: readonly [name: string, map: ClientHandlerMap][] = [
@@ -60,4 +81,52 @@ describe('registerClientHandlers', () => {
       /duplicate handler .* "subscribe"/,
     );
   });
+});
+
+it('waits for the current locale activation before dispatching a message', async () => {
+  vi.resetModules();
+  let resolveLocale!: () => void;
+  const localeReady = new Promise<void>((resolve) => {
+    resolveLocale = resolve;
+  });
+  vi.doMock('@/lib/i18n', async () => ({
+    ...(await vi.importActual<typeof I18nModule>('@/lib/i18n')),
+    waitForLocaleSync: () => localeReady,
+  }));
+
+  try {
+    // 冷启动竞态依赖新的路由器单例；静态导入无法重置已加载的模块实例。
+    const { CLIENT_MESSAGE_TYPES: messageTypes } = await import('@/lib/ipc/protocol');
+    const router = await import('./client-router');
+    const handler = vi.fn();
+    const handlers = Object.fromEntries(
+      messageTypes
+        .filter((type) => type !== 'hello')
+        .map((type) => [type, type === 'subscribe' ? handler : vi.fn()]),
+    ) as Parameters<typeof router.registerClientHandlers>[0];
+    router.registerClientHandlers(handlers);
+    router.setupClientRouter();
+
+    portRegistryHarness.getPortState.mockReturnValue({ instanceId: null });
+    let dispatchMessage: ((message: ClientMessage) => Promise<void>) | undefined;
+    const port = {
+      onMessage: {
+        addListener(listener: (message: ClientMessage) => Promise<void>) {
+          dispatchMessage = listener;
+        },
+      },
+    } as unknown as chrome.runtime.Port;
+    portRegistryHarness.connectListener?.(port);
+
+    const dispatch = dispatchMessage?.({ type: 'subscribe', sessionId: 'session' } as ClientMessage);
+    expect(handler).not.toHaveBeenCalled();
+    resolveLocale();
+    await dispatch;
+    expect(handler).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.doUnmock('@/lib/i18n');
+    vi.resetModules();
+    portRegistryHarness.connectListener = undefined;
+    vi.clearAllMocks();
+  }
 });

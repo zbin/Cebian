@@ -19,8 +19,10 @@ import { isInjectablePage } from '@/lib/browser/tab-actions';
 import { setupUpdateNotice } from './lifecycle/update-notice';
 import { setupPortRegistry } from './ipc/port-registry';
 import { setupClientRouter } from './ipc/client-router';
+import { startLocaleSync } from '@/lib/i18n';
 
 export default defineBackground(() => {
+  void startLocaleSync();
   console.log('Cebian background started', { id: browser.runtime.id });
 
   chrome.sidePanel

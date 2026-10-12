@@ -249,6 +249,12 @@ settings:
       system: "跟隨系統"
       light: "淺色"
       dark: "深色"
+    language:
+      label: "介面語言"
+      system: "跟隨系統"
+      en: "English"
+      zhCN: "简体中文"
+      zhTW: "繁體中文"
     fontScale:
       label: "對話字型大小"
       hint: "縮放對話中的訊息與輸入框，工具卡片等其他介面維持原樣。"

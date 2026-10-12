@@ -7,15 +7,18 @@ import { AgentMessage, AgentTextBlock, UserMessageBubble } from '@/components/ch
 import { LocalFontPicker } from '@/components/settings/appearance/LocalFontPicker';
 import { useStorageItem } from '@/hooks/useStorageItem';
 import {
+  MIN_CHAT_FONT_SCALE_PERCENT,
   CHAT_FONT_SCALE_STEP,
   MAX_CHAT_FONT_SCALE_PERCENT,
-  MIN_CHAT_FONT_SCALE_PERCENT,
   chatAppearance,
   resolveChatAppearance,
   themePreference,
   type ChatAppearance,
   type ChatFontPreset,
   type ThemePreference,
+  localePreference,
+  resolveLocalePreference,
+  type LocalePreference,
 } from '@/lib/persistence/storage';
 import { chatAppearanceStyle } from '@/lib/ui/chat-appearance';
 import { isLocalFontAccessSupported } from '@/lib/ui/local-fonts';
@@ -26,6 +29,13 @@ const THEME_OPTIONS: { value: ThemePreference; getLabel: () => string }[] = [
   { value: 'light', getLabel: () => t('settings.appearance.theme.light') },
   { value: 'dark', getLabel: () => t('settings.appearance.theme.dark') },
 ];
+const LANGUAGE_OPTIONS: { value: LocalePreference; getLabel: () => string }[] = [
+  { value: 'system', getLabel: () => t('settings.appearance.language.system') },
+  { value: 'en', getLabel: () => t('settings.appearance.language.en') },
+  { value: 'zh_CN', getLabel: () => t('settings.appearance.language.zhCN') },
+  { value: 'zh_TW', getLabel: () => t('settings.appearance.language.zhTW') },
+];
+
 
 const FONT_OPTIONS: { value: ChatFontPreset; getLabel: () => string }[] = [
   { value: 'default', getLabel: () => t('settings.appearance.font.default') },
@@ -229,8 +239,8 @@ function FontScaleRow({
  * 「自定义」字体只能从本机已安装的字体里选（Local Font Access API），浏览器不支持时不提供该选项。
  */
 export function AppearanceSection() {
-  // undefined = 还没读出来：先按 fallback 勾选再跳变会闪一下，读出前禁用
   const [theme] = useStorageItem(themePreference, undefined);
+  const [locale, setLocale] = useState<LocalePreference | undefined>();
   const [appearance, updateAppearance] = useEditableChatAppearance();
   const loaded = appearance !== null;
   const current = appearance ?? resolveChatAppearance(null);
@@ -238,8 +248,41 @@ export function AppearanceSection() {
   const [scaleDraft, setScaleDraft] = useState<number | null>(null);
 
   const themeLabelId = useId();
+  const languageLabelId = useId();
   const fontLabelId = useId();
   const fontHintId = useId();
+  const localeChangeGeneration = useRef(0);
+  const localeRef = useRef<LocalePreference | undefined>(undefined);
+  useEffect(() => {
+    let mounted = true;
+    let changedBeforeRead = false;
+    const unwatch = localePreference.watch(() => {
+      changedBeforeRead = true;
+      if (mounted) {
+        const generation = ++localeChangeGeneration.current;
+        void localePreference.getValue().then((value) => {
+          if (!mounted || generation !== localeChangeGeneration.current) return;
+          const preference = resolveLocalePreference(value);
+          localeRef.current = preference;
+          setLocale(preference);
+        }).catch((err) => {
+          if (!mounted || generation !== localeChangeGeneration.current) return;
+          console.warn('[appearance] read locale preference failed:', err);
+        });
+      }
+    });
+    void localePreference.getValue().then((value) => {
+      if (mounted && !changedBeforeRead) {
+        const preference = resolveLocalePreference(value);
+        localeRef.current = preference;
+        setLocale(preference);
+      }
+    }).catch((err) => console.warn('[appearance] read locale preference failed:', err));
+    return () => {
+      mounted = false;
+      unwatch();
+    };
+  }, []);
 
   // 不支持读取本机字体时隐藏「自定义」；但当前已是自定义（如从别的浏览器恢复的备份）时仍列出它，
   // 让单选组如实显示当前状态——对话区照常按保存的字体名渲染。此时选择器禁用，
@@ -256,6 +299,26 @@ export function AppearanceSection() {
       toast.error(t('errors.appearanceSaveFailed'));
     });
   };
+  async function changeInterfaceLanguage(next: LocalePreference): Promise<void> {
+    const generation = ++localeChangeGeneration.current;
+    let writeSucceeded = false;
+    try {
+      await localePreference.setValue(next);
+      writeSucceeded = true;
+      const stored = resolveLocalePreference(await localePreference.getValue());
+      if (generation === localeChangeGeneration.current) {
+        localeRef.current = stored;
+        setLocale(stored);
+      }
+    } catch (error) {
+      if (generation !== localeChangeGeneration.current) return;
+      const latest = localeRef.current ?? (writeSucceeded ? next : locale ?? 'system');
+      localeRef.current = latest;
+      setLocale(latest);
+      console.warn('[appearance] update locale failed:', error);
+      toast.error(t('errors.appearanceSaveFailed'));
+    }
+  }
 
   // 预览自带一份局部样式：独立设置标签页没有侧边栏根节点上的变量，且要反映拖动中的字号草稿
   const preview = resolveChatAppearance({
@@ -266,6 +329,16 @@ export function AppearanceSection() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <h2 className="text-base font-semibold">{t('settings.appearance.title')}</h2>
+      <div className="space-y-2">
+        <Label id={languageLabelId} className="text-sm">{t('settings.appearance.language.label')}</Label>
+        <InlineRadioGroup
+          value={locale ?? 'system'}
+          options={LANGUAGE_OPTIONS}
+          onChange={(next) => void changeInterfaceLanguage(next)}
+          labelId={languageLabelId}
+          disabled={locale === undefined}
+        />
+      </div>
 
       <div className="space-y-2">
         <Label id={themeLabelId} className="text-sm">{t('settings.appearance.theme.label')}</Label>

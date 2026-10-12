@@ -18,10 +18,12 @@ import { DirView } from './ui/DirView';
 import { FileView } from './ui/FileView';
 import { Toolbar } from './ui/Toolbar';
 import type { DualViewType, ViewMode, ViewState } from './types';
+import { useLocale } from '@/hooks/useLocale';
 
 const BRAND_ICON = browser.runtime.getURL('/icon/32.png' as never);
 
 export default function App() {
+  const locale = useLocale();
   const [theme] = useStorageItem(themePreference, 'system');
   const [themeReady, setThemeReady] = useState(false);
   const [view, setView] = useState<ViewState>({ kind: 'loading', path: getHashPath() });
@@ -148,12 +150,12 @@ export default function App() {
         view.kind === 'dir' ? true : view.kind === 'file' ? false : undefined,
         view.kind === 'loading' && !view.session ? 'pending' : view.session,
       ),
-    [view],
+    [view, locale],
   );
   const dualType: DualViewType | null = view.kind === 'file' ? dualViewTypeOf(view.media) : null;
   const mode: ViewMode = (dualType ? viewModes[dualType] : undefined) ?? 'preview';
 
-  if (!themeReady) return null;
+  if (!themeReady || locale === null) return null;
 
   // 主区域是滚动容器；填满型视图（媒体 / 占位 / HTML 预览）用 absolute inset-0 铺满它，
   // PDF 视图为了做 IntersectionObserver 的 root 自带一层滚动容器。

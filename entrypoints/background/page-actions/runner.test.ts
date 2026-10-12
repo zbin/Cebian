@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@earendil-works/pi-ai/compat', () => ({ stream: mocks.stream }));
 
 vi.mock('@/lib/i18n', () => ({
+  waitForLocaleSync: () => Promise.resolve(),
   t: (key: string, substitutions?: string[]) =>
     substitutions ? `${key}:${substitutions.join('|')}` : key,
 }));

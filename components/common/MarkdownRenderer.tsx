@@ -14,6 +14,7 @@ import { formatBytes } from '@/lib/utils';
 import { extensionSettingsUrl } from '@/lib/browser/file-access';
 import { normalizeMathDelimiters } from '@/lib/content/math-delimiters';
 import { splitMarkdownBlocks } from '@/lib/content/markdown-blocks';
+import { useLocale } from '@/hooks/useLocale';
 
 /**
  * Minimal structural types for the hast (HTML AST) nodes react-markdown passes
@@ -265,6 +266,7 @@ type VfsImageState =
   | { kind: 'loading'; path: string }
   | { kind: 'ready'; path: string; url: string }
   | { kind: 'too-large'; path: string; bytes: number }
+  | { kind: 'unsupported-mime'; path: string; mime: string }
   | { kind: 'error'; path: string; message: string };
 
 /**
@@ -292,11 +294,7 @@ function VfsImage({ src, alt, ...rest }: { src?: string; alt?: string } & Record
         const mime = mimeFromPath(vfsPath);
         if (!isImageMime(mime)) {
           if (!cancelled) {
-            setState({
-              kind: 'error',
-              path: vfsPath,
-              message: t('vfs.inlineUnsupportedMime', [mime]),
-            });
+            setState({ kind: 'unsupported-mime', path: vfsPath, mime });
           }
           return;
         }
@@ -381,13 +379,16 @@ function VfsImage({ src, alt, ...rest }: { src?: string; alt?: string } & Record
       </a>
     );
   }
-  if (effective.kind === 'error') {
+  if (effective.kind === 'error' || effective.kind === 'unsupported-mime') {
+    const message = effective.kind === 'error'
+      ? effective.message
+      : t('vfs.inlineUnsupportedMime', [effective.mime]);
     return (
       <span
         role="img"
         aria-label={alt || vfsPath}
         className="inline-block align-middle px-3 py-2 my-2 rounded border border-dashed border-destructive/40 bg-destructive/5 text-xs text-destructive"
-        title={t('vfs.inlineLoadFailed', [vfsPath, effective.message])}
+        title={t('vfs.inlineLoadFailed', [vfsPath, message])}
       >
         ⚠ {alt || vfsPath}
       </span>
@@ -674,6 +675,7 @@ const MarkdownDoc = memo(function MarkdownDoc({
 }: {
   content: string;
   math: MathPlugins | null;
+  locale: string | null;
 }) {
   return (
     <Markdown
@@ -710,6 +712,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   normalizeMath = false,
   streaming = false,
 }: MarkdownRendererProps) {
+  const locale = useLocale();
   const content = normalizeMath
     ? normalizeMathDelimiters(rawContent, { streaming })
     : rawContent;
@@ -719,10 +722,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       {streaming ? (
         splitMarkdownBlocks(content).map((block, idx) => (
           // 前缀稳定（块边界不随追加移动），index 作 key 安全
-          <MarkdownDoc key={idx} content={block} math={math} />
+          <MarkdownDoc key={idx} content={block} math={math} locale={locale} />
         ))
       ) : (
-        <MarkdownDoc content={content} math={math} />
+        <MarkdownDoc content={content} math={math} locale={locale} />
       )}
     </div>
   );
